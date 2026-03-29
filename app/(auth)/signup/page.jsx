@@ -68,7 +68,7 @@ export default function SignupPage() {
         password: form.password,
         plan: form.plan,
       });
-
+        console.log('Order Data:', orderData);
       // Step 2: Load Razorpay script
       const loaded = await loadRazorpayScript();
       if (!loaded) {
@@ -81,7 +81,7 @@ export default function SignupPage() {
 
       // Step 3: Open Razorpay checkout
       const options = {
-        key: orderData.key_id || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        key: "rzp_test_SWJZ4Om2t2OhKp" || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: orderData.amount,
         currency: orderData.currency || 'INR',
         name: 'Sunday Hundred',
@@ -130,6 +130,7 @@ export default function SignupPage() {
       });
       rzp.open();
     } catch (err) {
+      console.log('Error during registration/payment:', err);
       setError(err.message || 'Registration failed. Please try again.');
       setStep('form');
       setLoading(false);
