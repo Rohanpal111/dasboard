@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { getOffers, createOffer, toggleOffer, deleteOffer } from '@/services/offersService';
+import { getMyOffers, createOffer, toggleOffer } from '@/services/offersService';
 
 export function useOffers() {
   const [data,    setData]    = useState([]);
@@ -12,8 +12,8 @@ export function useOffers() {
     setLoading(true);
     setError(null);
     try {
-      const res = await getOffers();
-      setData(res?.items || res || []);
+      const res = await getMyOffers({ limit: 50, page: 1 });
+      setData(res?.offers || []);
     } catch (err) {
       setError(err.message || 'Failed to load offers');
     } finally {
@@ -43,15 +43,5 @@ export function useOffers() {
     }
   }, []);
 
-  const remove = useCallback(async (id) => {
-    try {
-      await deleteOffer(id);
-      await fetchOffers();
-      return { success: true };
-    } catch (err) {
-      return { success: false, error: err.message };
-    }
-  }, [fetchOffers]);
-
-  return { data, loading, error, refresh: fetchOffers, addOffer, toggle, remove };
+  return { data, loading, error, refresh: fetchOffers, addOffer, toggle };
 }

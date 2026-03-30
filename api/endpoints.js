@@ -57,4 +57,12 @@ export const ENDPOINTS = {
     LIST: (businessId) => `services/get_service/${businessId}`,
     CREATE: "/services/create_service",
   },
+
+  // ── OFFERS ─────────────────────────────────────────────
+  OFFERS: {
+    CREATE: '/offers/create_offer',
+    BY_BUSINESS: (businessId) => `/offers/business/${businessId}`,
+    MY_OFFERS: '/offers/my_offers',
+    UPDATE: (offerId) => `/offers/update_offer/${offerId}`,
+  },
 };

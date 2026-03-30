@@ -20,7 +20,7 @@ const NAV_ITEMS = [
       // { href: '/dashboard/analytics', label: 'Analytics',        icon: <ChartIcon /> },
       { href: '/business-profile',   label: 'Business Profile',  icon: <UserIcon /> },
       { href: '/services',           label: 'Services',          icon: <CogIcon /> },
-      // { href: '/offers',             label: 'Offers',            icon: <TagIcon /> },
+      { href: '/offers',             label: 'Offers',            icon: <TagIcon /> },
       { href: '/reviews',            label: 'Reviews',           icon: <StarIcon /> },
       { href: '/subscription',       label: 'Subscription',      icon: <CardIcon /> },
     ],
