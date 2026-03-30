@@ -40,7 +40,7 @@ export default function Header({ user, sidebarOpen = false, onSidebarToggle }) {
       {/* Role badge */}
       <div className="hidden sm:flex bg-dark-800 rounded p-0.5 gap-0.5">
         <span className="px-3 py-1 rounded text-xs font-semibold bg-accent text-black">
-          Business
+          {user?.role ? `${user.role.charAt(0).toUpperCase()}${user.role.slice(1)}` : 'Business'}
         </span>
       </div>
 

@@ -1,8 +1,8 @@
 /**
  * app/(auth)/signup/page.jsx
  * ─────────────────────────────────────────────────────────
- * Business registration with Razorpay payment.
- * Flow: Fill form → Select plan → Pay via Razorpay → Verify → Redirect to login
+ * Business registration with payment_mode-based flow.
+ * Supports MANUAL_QR and optional RAZORPAY flow.
  * ─────────────────────────────────────────────────────────
  */
 
@@ -10,7 +10,11 @@
 
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { registerAndCreateOrder, verifyPayment } from '@/services/subscriptionService';
+import {
+  registerSubscription,
+  verifyRazorpayPayment,
+  submitManualTransaction,
+} from '@/services/subscriptionService';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { useToast } from '@/components/ui/Toast';
@@ -21,6 +25,10 @@ const PLANS = [
   { key: '6_months',  label: '6 Months',  price: '₹4,999',  priceNum: 4999 },
   { key: '12_months', label: '12 Months', price: '₹7,999',  priceNum: 7999 },
 ];
+
+const RAZORPAY_ENABLED = process.env.NEXT_PUBLIC_RAZORPAY_ENABLED === 'true';
+const FALLBACK_UPI_LINK = 'upi://pay?pa=ag244834-1@okaxis&pn=SundayHundred&am=99&cu=INR&tn=Payment%20for%20subscription';
+const FALLBACK_UPI_ID = 'ag244834-1@okaxis';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -33,7 +41,11 @@ export default function SignupPage() {
     password: '',
     plan: '3_months',
   });
-  const [step, setStep]       = useState('form'); // 'form' | 'paying' | 'verifying' | 'done'
+  const [step, setStep] = useState('form'); // form | paying | verifying | manual | submitting_manual | pending | done
+  const [manualInfo, setManualInfo] = useState(null);
+  const [manualTxn, setManualTxn] = useState({ txn_id: '', payer_note: '' });
+  const [manualError, setManualError] = useState('');
+  const [manualHint, setManualHint] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState('');
 
@@ -60,15 +72,43 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
-      // Step 1: Register + create Razorpay order
-      const orderData = await registerAndCreateOrder({
+      // Step 1: Register and check payment mode
+      const paymentData = await registerSubscription({
         name: form.name,
         email: form.email,
         phone: form.phone,
         password: form.password,
         plan: form.plan,
       });
-        console.log('Order Data:', orderData);
+
+      if (paymentData.payment_mode === 'MANUAL_QR') {
+        setManualInfo(paymentData);
+        setManualHint('');
+        setStep('manual');
+        setLoading(false);
+        return;
+      }
+
+      if (paymentData.payment_mode !== 'RAZORPAY') {
+        throw new Error('Unsupported payment mode from server.');
+      }
+
+      if (!RAZORPAY_ENABLED) {
+        const plan = PLANS.find((p) => p.key === form.plan);
+        setManualInfo({
+          payment_reference: paymentData.payment_reference || paymentData.order_id || `manual_fallback_${Date.now()}`,
+          amount: paymentData.amount ? Number(paymentData.amount) / 100 : plan?.priceNum || 99,
+          qr: {
+            upi_id: paymentData?.qr?.upi_id || FALLBACK_UPI_ID,
+            qr_image_url: paymentData?.qr?.qr_image_url || null,
+          },
+        });
+        setManualHint('Razorpay disabled hai, isliye manual UPI fallback open kiya gaya hai. TXN submit ke baad admin approval pending rahega.');
+        setStep('manual');
+        setLoading(false);
+        return;
+      }
+
       // Step 2: Load Razorpay script
       const loaded = await loadRazorpayScript();
       if (!loaded) {
@@ -81,12 +121,12 @@ export default function SignupPage() {
 
       // Step 3: Open Razorpay checkout
       const options = {
-        key: "rzp_test_SWJZ4Om2t2OhKp" || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount: orderData.amount,
-        currency: orderData.currency || 'INR',
+        key: paymentData.key_id || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        amount: paymentData.amount,
+        currency: paymentData.currency || 'INR',
         name: 'Sunday Hundred',
         description: `${PLANS.find(p => p.key === form.plan)?.label || ''} Subscription`,
-        order_id: orderData.order_id,
+        order_id: paymentData.order_id,
         prefill: {
           name: form.name,
           email: form.email,
@@ -99,7 +139,7 @@ export default function SignupPage() {
           // Step 4: Verify payment
           setStep('verifying');
           try {
-            await verifyPayment({
+            await verifyRazorpayPayment({
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
@@ -130,9 +170,40 @@ export default function SignupPage() {
       });
       rzp.open();
     } catch (err) {
-      console.log('Error during registration/payment:', err);
       setError(err.message || 'Registration failed. Please try again.');
       setStep('form');
+      setLoading(false);
+    }
+  };
+
+  const handleManualSubmit = async (e) => {
+    e.preventDefault();
+    setManualError('');
+
+    if (!manualInfo?.payment_reference) {
+      setManualError('Missing payment reference. Please restart signup flow.');
+      return;
+    }
+    if (!manualTxn.txn_id.trim()) {
+      setManualError('Transaction ID is required.');
+      return;
+    }
+
+    setLoading(true);
+    setStep('submitting_manual');
+    try {
+      await submitManualTransaction({
+        payment_reference: manualInfo.payment_reference,
+        txn_id: manualTxn.txn_id.trim(),
+        payer_note: manualTxn.payer_note.trim(),
+      });
+
+      setStep('pending');
+      toast.success('Payment submitted. Pending admin approval.');
+    } catch (submitErr) {
+      setManualError(submitErr.message || 'Failed to submit transaction.');
+      setStep('manual');
+    } finally {
       setLoading(false);
     }
   };
@@ -148,6 +219,111 @@ export default function SignupPage() {
           </div>
           <h2 className="text-xl font-bold text-white mb-2">Account Created!</h2>
           <p className="text-sm text-dark-400">Redirecting to login...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === 'pending') {
+    return (
+      <div className="min-h-screen bg-dark-950 flex items-center justify-center p-4">
+        <div className="w-full max-w-md bg-surface border border-dark-800 rounded-lg p-7 text-center">
+          <div className="w-16 h-16 bg-accent-muted rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-8 h-8 text-accent">
+              <path d="M12 6v6l4 2" />
+              <circle cx="12" cy="12" r="9" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-bold text-white mb-2">Pending Admin Approval</h2>
+          <p className="text-sm text-dark-400 mb-5">
+            Your payment details are submitted successfully. Account activation will happen after admin approval.
+          </p>
+          <p className="text-xs text-dark-500 mb-5">
+            Note: Login may show Subscription is not active until approval is completed.
+          </p>
+          <Button className="w-full justify-center" onClick={() => router.push('/login')}>
+            Go to Login
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === 'manual' || step === 'submitting_manual') {
+    const upiLink = manualInfo?.qr?.upi_id
+      ? `upi://pay?pa=${encodeURIComponent(manualInfo.qr.upi_id)}&pn=SundayHundred&am=${encodeURIComponent(String(manualInfo.amount || 99))}&cu=INR&tn=Payment%20for%20subscription`
+      : FALLBACK_UPI_LINK;
+
+    return (
+      <div className="min-h-screen bg-dark-950 flex items-center justify-center p-4">
+        <div className="w-full max-w-md bg-surface border border-dark-800 rounded-lg p-7">
+          <h1 className="text-xl font-bold text-white mb-1.5">Manual Payment</h1>
+          <p className="text-sm text-dark-400 mb-5">
+            Razorpay is currently disabled. Complete payment via UPI and submit transaction ID for approval.
+          </p>
+
+          {manualHint && (
+            <div className="bg-accent-muted border border-accent/30 text-accent text-sm rounded p-3 mb-4">
+              {manualHint}
+            </div>
+          )}
+
+          <div className="rounded border border-dark-700 bg-dark-900 p-4 mb-4 space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-dark-400">Amount</span>
+              <span className="text-white font-semibold">Rs {manualInfo?.amount || 99}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-dark-400">Reference</span>
+              <span className="text-white font-mono text-xs">{manualInfo?.payment_reference || '—'}</span>
+            </div>
+          </div>
+
+          <a
+            href={upiLink}
+            className="w-full inline-flex justify-center rounded bg-accent px-4 py-2 text-sm font-semibold text-black hover:bg-accent-dark transition-colors mb-4"
+          >
+            Open UPI App
+          </a>
+
+          {manualInfo?.qr?.qr_image_url && (
+            <img
+              src={manualInfo.qr.qr_image_url}
+              alt="UPI QR"
+              className="w-44 h-44 object-contain mx-auto rounded border border-dark-700 mb-4"
+            />
+          )}
+
+          {manualError && (
+            <div className="bg-status-error-muted border border-status-error/30 text-status-error text-sm rounded p-3 mb-4">
+              {manualError}
+            </div>
+          )}
+
+          <form onSubmit={handleManualSubmit} className="space-y-3">
+            <Input
+              label="Transaction ID"
+              placeholder="e.g. UPI123456789"
+              value={manualTxn.txn_id}
+              onChange={(e) => setManualTxn((p) => ({ ...p, txn_id: e.target.value }))}
+              required
+            />
+            <Input
+              label="Payer Note (Optional)"
+              placeholder="Paid from GPay"
+              value={manualTxn.payer_note}
+              onChange={(e) => setManualTxn((p) => ({ ...p, payer_note: e.target.value }))}
+            />
+
+            <Button
+              type="submit"
+              loading={loading}
+              disabled={step === 'submitting_manual'}
+              className="w-full justify-center mt-1"
+            >
+              Submit Payment for Approval
+            </Button>
+          </form>
         </div>
       </div>
     );
@@ -256,7 +432,11 @@ export default function SignupPage() {
               disabled={step === 'paying' || step === 'verifying'}
               className="w-full justify-center mt-2"
             >
-              {step === 'paying' ? 'Complete Payment...' : step === 'verifying' ? 'Verifying...' : `Pay ${PLANS.find(p => p.key === form.plan)?.price || ''} & Register`}
+              {step === 'paying'
+                ? 'Complete Payment...'
+                : step === 'verifying'
+                ? 'Verifying...'
+                : 'Register & Continue'}
             </Button>
           </form>
 

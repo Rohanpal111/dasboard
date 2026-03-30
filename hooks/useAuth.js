@@ -45,7 +45,11 @@ export function useAuth() {
       setUser(data.user);
       setDashboard(data.dashboard);
       setSubscription(data.subscription);
-      router.push('/dashboard');
+      if (data.user?.role === 'admin') {
+        router.push('/admin');
+      } else {
+        router.push('/dashboard');
+      }
       return { success: true };
     } catch (err) {
       const msg = err.message || 'Login failed';

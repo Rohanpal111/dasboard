@@ -27,6 +27,9 @@ export const ENDPOINTS = {
     REGISTER: "/subscriptions/register",
     VERIFY: "/subscriptions/verify",
     DETAIL: "/subscriptions/detail",
+    MANUAL_SUBMIT: '/subscriptions/manual/submit',
+    MANUAL_PENDING: '/subscriptions/manual/pending',
+    MANUAL_APPROVE: '/subscriptions/manual/action',
   },
 
   // ── Business ──────────────────────────────────────────

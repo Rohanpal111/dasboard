@@ -11,7 +11,7 @@ import ProtectedRoute from '@/components/shared/ProtectedRoute';
 
 export default function Layout({ children }) {
   return (
-    <ProtectedRoute>
+    <ProtectedRoute allowedRoles={['business']} redirectTo="/admin">
       <DashboardLayout>
         {children}
       </DashboardLayout>

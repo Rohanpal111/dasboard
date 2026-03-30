@@ -12,7 +12,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/helpers';
 
-const NAV_ITEMS = [
+const BUSINESS_NAV_ITEMS = [
   {
     section: 'BUSINESS',
     links: [
@@ -27,8 +27,19 @@ const NAV_ITEMS = [
   },
 ];
 
+const ADMIN_NAV_ITEMS = [
+  {
+    section: 'ADMIN',
+    links: [
+      { href: '/admin', label: 'Approvals', icon: <ShieldIcon /> },
+    ],
+  },
+];
+
 export default function Sidebar({ user }) {
   const pathname = usePathname();
+  const role = user?.role || 'business';
+  const navItems = role === 'admin' ? ADMIN_NAV_ITEMS : BUSINESS_NAV_ITEMS;
 
   return (
     <aside className="w-60 min-w-[240px] h-screen flex flex-col bg-dark-950 border-r border-dark-800 overflow-y-auto overflow-x-hidden">
@@ -42,7 +53,7 @@ export default function Sidebar({ user }) {
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-4">
-        {NAV_ITEMS.map((section) => (
+        {navItems.map((section) => (
           <div key={section.section} className="mb-6">
             <p className="text-2xs font-semibold tracking-widest text-dark-600 uppercase px-2 mb-2">
               {section.section}
@@ -141,6 +152,14 @@ function ChartIcon() {
       <line x1="8" y1="16" x2="8" y2="10"/>
       <line x1="12" y1="16" x2="12" y2="6"/>
       <line x1="16" y1="16" x2="16" y2="12"/>
+    </svg>
+  );
+}
+function ShieldIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+      <path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6l8-4z" />
+      <path d="M9 12l2 2 4-4" />
     </svg>
   );
 }

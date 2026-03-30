@@ -48,5 +48,29 @@ export async function getAllFeaturedBusinesses(params = {}) {
   return response.data;
 }
 
+/**
+ * Admin: fetch pending businesses from featured list source.
+ */
+export async function getPendingBusinesses(params = {}) {
+  const data = await getAllFeaturedBusinesses({ limit: 100, page: 1, ...params });
+  const businesses = Array.isArray(data?.businesses) ? data.businesses : [];
+  return businesses.filter((biz) => !biz.is_approved);
+}
+
+/**
+ * Admin: approve/reject business using update endpoint.
+ */
+export async function updateBusinessApproval({ businessId, isApproved, isActive = true }) {
+  const formData = new FormData();
+  formData.append('business_id', businessId);
+  formData.append('is_approved', String(isApproved));
+  formData.append('is_active', String(isActive));
+
+  const response = await axiosInstance.patch(ENDPOINTS.BUSINESS.UPDATE, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data;
+}
+
 
 
