@@ -8,8 +8,8 @@ export default function Footer() {
 
   return (
     <footer className="h-12 border-t border-dark-800 bg-dark-950 px-6 flex items-center justify-between text-xs text-dark-500">
-      <p>LocalBiz Dashboard</p>
-      <p>{year} LocalBiz. All rights reserved.</p>
+      <p>Sunday Hundred Dashboard</p>
+      <p>{year} Sunday Hundred. All rights reserved.</p>
     </footer>
   );
 }

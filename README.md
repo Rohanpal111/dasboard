@@ -1,4 +1,4 @@
-# LocalBiz — Next.js Dashboard
+# Sunday Hundred — Next.js Dashboard
 
 Production-ready dashboard with **Next.js App Router**, **Tailwind CSS**, and **Axios**.
 
