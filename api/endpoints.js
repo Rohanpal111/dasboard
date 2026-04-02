@@ -7,7 +7,7 @@
  */
 
 const RAW_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.sundayhundred.com/api/v1';
+ 'https://api.sundayhundred.com/api/v1';
 
 export const BASE_URL = /^https?:\/\//i.test(RAW_BASE_URL)
   ? RAW_BASE_URL
@@ -35,9 +35,16 @@ export const ENDPOINTS = {
   // ── Business ──────────────────────────────────────────
   BUSINESS: {
     CREATE: "/business/createBusiness",
+    ADMIN_BULK_CREATE: "/business/admin/bulk-create",
     UPDATE: "/business/updateBusiness",
     GET_ALL_FEATURED: "/business/getAllFeatureBusiness",
     GET_BY_ID: (id) => `/business/getBusinessById/${id}`,
+  },
+
+  // ── Users (Superadmin) ────────────────────────────────
+  USERS: {
+    ADMIN_LIST: '/users/admin/users',
+    ADMIN_UPDATE: '/users/admin/user-update',
   },
 
   // ── Categories ────────────────────────────────────────

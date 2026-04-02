@@ -72,5 +72,12 @@ export async function updateBusinessApproval({ businessId, isApproved, isActive 
   return response.data;
 }
 
+/**
+ * Admin/Superadmin: bulk create businesses in one request.
+ */
+export async function bulkCreateBusinesses(payload) {
+  return axiosInstance.post(ENDPOINTS.BUSINESS.ADMIN_BULK_CREATE, payload);
+}
+
 
 

@@ -32,6 +32,16 @@ const ADMIN_NAV_ITEMS = [
     section: 'ADMIN',
     links: [
       { href: '/admin', label: 'Approvals', icon: <ShieldIcon /> },
+      { href: '/admin/bulk-create', label: 'Bulk Create', icon: <PlusIcon /> },
+    ],
+  },
+];
+
+const SUPERADMIN_NAV_ITEMS = [
+  {
+    section: 'SUPERADMIN',
+    links: [
+      { href: '/admin/users', label: 'Users', icon: <UsersIcon /> },
     ],
   },
 ];
@@ -39,7 +49,11 @@ const ADMIN_NAV_ITEMS = [
 export default function Sidebar({ user }) {
   const pathname = usePathname();
   const role = user?.role || 'business';
-  const navItems = role === 'admin' ? ADMIN_NAV_ITEMS : BUSINESS_NAV_ITEMS;
+  const navItems = role === 'superadmin'
+    ? [...ADMIN_NAV_ITEMS, ...SUPERADMIN_NAV_ITEMS]
+    : role === 'admin'
+      ? ADMIN_NAV_ITEMS
+      : BUSINESS_NAV_ITEMS;
 
   return (
     <aside className="w-60 min-w-[240px] h-screen flex flex-col bg-dark-950 border-r border-dark-800 overflow-y-auto overflow-x-hidden">
@@ -160,6 +174,23 @@ function ShieldIcon() {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
       <path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6l8-4z" />
       <path d="M9 12l2 2 4-4" />
+    </svg>
+  );
+}
+function UsersIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+function PlusIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+      <path d="M12 5v14M5 12h14" />
     </svg>
   );
 }

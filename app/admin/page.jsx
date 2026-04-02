@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
@@ -72,6 +73,9 @@ export default function AdminPage() {
             <p className="text-sm text-dark-400">Manual payment approvals</p>
           </div>
           <div className="flex gap-2">
+            <Link href="/admin/bulk-create" className="inline-flex items-center justify-center rounded border border-dark-700 px-4 py-2 text-sm font-medium text-white hover:bg-dark-800 transition-colors">
+              Bulk Create
+            </Link>
             <Button variant="outline" onClick={() => fetchPending(page, search)}>Refresh</Button>
           </div>
         </div>
