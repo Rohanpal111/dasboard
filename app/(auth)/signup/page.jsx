@@ -21,7 +21,7 @@ import Input from '@/components/ui/Input';
 import { useToast } from '@/components/ui/Toast';
 
 const PLANS = [
-  { key: '1_month',   label: '1 Month',   price: '₹1',      priceNum: 1,    popular: true },
+  { key: '1_month',   label: '1 Month',   price: '₹1999',      priceNum: 1999,    popular: true },
   { key: '3_months',  label: '3 Months',  price: '₹2,999',  priceNum: 2999 },
   { key: '6_months',  label: '6 Months',  price: '₹4,999',  priceNum: 4999 },
   { key: '12_months', label: '12 Months', price: '₹7,999',  priceNum: 7999 },

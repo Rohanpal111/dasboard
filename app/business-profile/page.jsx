@@ -20,12 +20,76 @@ import { getBusinessById, createBusiness, updateBusiness } from '@/services/busi
 import { getAllCategories } from '@/services/categoriesService';
 import { getAllCities } from '@/services/citiesService';
 
+function normalizeCategoriesResponse(response) {
+  const rawCategories = Array.isArray(response)
+    ? response
+    : Array.isArray(response?.data)
+    ? response.data
+    : Array.isArray(response?.categories)
+    ? response.categories
+    : [];
+
+  return rawCategories.map((cat) => {
+    const rawSubcategories = Array.isArray(cat?.sub_categories)
+      ? cat.sub_categories
+      : Array.isArray(cat?.subcategories)
+      ? cat.subcategories
+      : [];
+
+    const normalizedSubcategories = rawSubcategories.map((sub) => ({
+      id: sub?.id || '',
+      name: sub?.sub_cat || sub?.name || 'Unnamed Subcategory',
+    })).filter((sub) => sub.id);
+
+    return {
+      id: cat?.id || '',
+      name: cat?.type_cat || cat?.name || 'Unnamed Category',
+      subcategories: normalizedSubcategories.length > 0
+        ? normalizedSubcategories
+        : cat?.id
+        ? [{ id: cat.id, name: cat?.type_cat || cat?.name || 'Unnamed Category' }]
+        : [],
+    };
+  }).filter((cat) => cat.id);
+}
+
+function normalizeCitiesResponse(response) {
+  return Array.isArray(response)
+    ? response
+    : Array.isArray(response?.cities)
+    ? response.cities
+    : Array.isArray(response?.data)
+    ? response.data
+    : [];
+}
+
+function findParentCategoryId(categories, selectedSubcategoryId) {
+  if (!selectedSubcategoryId) return '';
+  for (const category of categories) {
+    if (category.id === selectedSubcategoryId) return category.id;
+    if (category.subcategories.some((sub) => sub.id === selectedSubcategoryId)) {
+      return category.id;
+    }
+  }
+  return '';
+}
+
+function findSubcategoryName(categories, selectedSubcategoryId) {
+  if (!selectedSubcategoryId) return '';
+  for (const category of categories) {
+    const match = category.subcategories.find((sub) => sub.id === selectedSubcategoryId);
+    if (match) return match.name;
+  }
+  return '';
+}
+
 export default function BusinessProfilePage() {
   const { toast } = useToast();
   const [loading, setLoading]     = useState(true);
   const [saving, setSaving]       = useState(false);
   const [business, setBusiness]   = useState(null);
   const [categories, setCategories] = useState([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [cities, setCities]       = useState([]);
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
@@ -43,8 +107,8 @@ export default function BusinessProfilePage() {
           getAllCategories().catch(() => []),
           getAllCities().catch(() => []),
         ]);
-        setCategories(Array.isArray(cats) ? cats : []);
-        setCities(Array.isArray(cits) ? cits : []);
+        setCategories(normalizeCategoriesResponse(cats));
+        setCities(normalizeCitiesResponse(cits));
 
         const session = getUserSession();
         const businessId = session.dashboard?.business_id;
@@ -75,7 +139,21 @@ export default function BusinessProfilePage() {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    const parentCategoryId = findParentCategoryId(categories, form.category_id);
+    setSelectedCategoryId(parentCategoryId);
+  }, [categories, form.category_id]);
+
   const update = (key) => (e) => setForm(p => ({ ...p, [key]: e.target.value }));
+
+  const handleCategoryChange = (e) => {
+    const parentId = e.target.value;
+    setSelectedCategoryId(parentId);
+    setForm((p) => ({ ...p, category_id: '' }));
+  };
+
+  const availableSubcategories = categories.find((cat) => cat.id === selectedCategoryId)?.subcategories || [];
+  const selectedSubcategoryName = findSubcategoryName(categories, form.category_id);
 
   const handleImageChange = (e) => {
     const file = e.target.files?.[0];
@@ -151,7 +229,7 @@ export default function BusinessProfilePage() {
                 <div>
                   <p className="text-md font-bold text-white">{form.name || 'Your Business'}</p>
                   <p className="text-xs text-dark-400">
-                    {categories.find(c => c.id === form.category_id)?.name || 'Select category'}
+                    {selectedSubcategoryName || 'Select subcategory'}
                   </p>
                 </div>
               </div>
@@ -165,17 +243,31 @@ export default function BusinessProfilePage() {
                   <Input label="Business Name" value={form.name} onChange={update('name')} required />
                   <Textarea label="Description" value={form.description} onChange={update('description')} rows={3} maxLength={2000} />
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <label className="block text-xs sm:text-sm font-medium text-dark-300 mb-1.5">Category</label>
                       <select
-                        value={form.category_id}
-                        onChange={update('category_id')}
+                        value={selectedCategoryId}
+                        onChange={handleCategoryChange}
                         className="w-full bg-dark-800 border border-dark-700 rounded px-3 py-2 text-sm text-white outline-none focus:border-dark-500 transition-colors"
                       >
                         <option value="">Select category</option>
                         {categories.map(cat => (
                           <option key={cat.id} value={cat.id}>{cat.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs sm:text-sm font-medium text-dark-300 mb-1.5">Subcategory</label>
+                      <select
+                        value={form.category_id}
+                        onChange={update('category_id')}
+                        disabled={!selectedCategoryId}
+                        className="w-full bg-dark-800 border border-dark-700 rounded px-3 py-2 text-sm text-white outline-none focus:border-dark-500 transition-colors disabled:opacity-60"
+                      >
+                        <option value="">{selectedCategoryId ? 'Select subcategory' : 'Select category first'}</option>
+                        {availableSubcategories.map((sub) => (
+                          <option key={sub.id} value={sub.id}>{sub.name}</option>
                         ))}
                       </select>
                     </div>

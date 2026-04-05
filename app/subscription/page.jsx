@@ -16,7 +16,7 @@ import { getSubscriptionDetail } from '@/services/subscriptionService';
 import DashboardLayout from '@/components/shared/DashboardLayout';
 
 const PLAN_DISPLAY = {
-  '1_month':   { name: '1 Month',   price: 1 },
+  '1_month':   { name: '1 Month',   price: 1999 },
   '3_months':  { name: '3 Months',  price: 2999 },
   '6_months':  { name: '6 Months',  price: 4999 },
   '12_months': { name: '12 Months', price: 7999 },

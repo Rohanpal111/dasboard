@@ -14,12 +14,89 @@ import { getAllCities } from '@/services/citiesService';
 const REQUIRED_PHONE_PATTERN = /^\d{10,15}$/;
 const REQUIRED_UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PLAN_OPTIONS = [
-  { label: '1 Month - ₹1', value: '1_month', amount: '1' },
+  { label: '1 Month - ₹1999', value: '1_month', amount: '1999' },
   { label: '3 Months - ₹2999', value: '3_months', amount: '2999' },
   { label: '6 Months - ₹4999', value: '6_months', amount: '4999' },
   { label: '12 Months - ₹7999', value: '12_months', amount: '7999' },
 ];
 const USER_ROLE_OPTIONS = ['business', 'admin', 'superadmin', 'customer'];
+
+function cleanLabel(value, fallback) {
+  const text = typeof value === 'string' ? value.trim() : '';
+  if (!text || text.toLowerCase() === 'null' || text.toLowerCase() === 'undefined') {
+    return fallback;
+  }
+  return text;
+}
+
+function toBoolOrTrue(value) {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') {
+    const v = value.trim().toLowerCase();
+    if (v === 'false' || v === '0') return false;
+  }
+  if (typeof value === 'number') return value !== 0;
+  return true;
+}
+
+function normalizeCategoriesResponse(response) {
+  const rawCategories = Array.isArray(response)
+    ? response
+    : Array.isArray(response?.data)
+    ? response.data
+    : Array.isArray(response?.categories)
+    ? response.categories
+    : [];
+
+  return rawCategories.map((cat) => {
+    const categoryId = cat?.id || cat?.category_id || '';
+    const categoryName = cleanLabel(cat?.type_cat || cat?.name || cat?.category || cat?.title, 'Unnamed Category');
+    const isCategoryActive = toBoolOrTrue(
+      cat?.type_cat_is_active ?? cat?.is_active ?? cat?.active
+    );
+    if (!categoryId || !isCategoryActive) {
+      return null;
+    }
+
+    const rawSubcategories = Array.isArray(cat?.sub_categories)
+      ? cat.sub_categories
+      : Array.isArray(cat?.subcategories)
+      ? cat.subcategories
+      : Array.isArray(cat?.children)
+      ? cat.children
+      : [];
+
+    const normalizedSubcategories = rawSubcategories.map((sub) => ({
+      id: sub?.id || sub?.subcategory_id || '',
+      name: cleanLabel(sub?.sub_cat || sub?.name || sub?.subcategory || sub?.title, 'Unnamed Subcategory'),
+      isActive: toBoolOrTrue(sub?.sub_cat_is_active ?? sub?.is_active ?? sub?.active),
+    })).filter((sub) => sub.id && sub.isActive).map(({ id, name }) => ({ id, name }));
+
+    return {
+      id: categoryId,
+      name: categoryName,
+      subcategories: normalizedSubcategories.length > 0
+        ? normalizedSubcategories
+        : [{ id: categoryId, name: categoryName }],
+    };
+  }).filter(Boolean);
+}
+
+function findParentCategoryId(categories, selectedSubcategoryId) {
+  if (!selectedSubcategoryId) return '';
+  for (const category of categories) {
+    if (category.id === selectedSubcategoryId) return category.id;
+    if (category.subcategories.some((sub) => sub.id === selectedSubcategoryId)) {
+      return category.id;
+    }
+  }
+  return '';
+}
+
+function getSubcategoriesByParent(categories, parentCategoryId) {
+  if (!parentCategoryId) return [];
+  return categories.find((cat) => cat.id === parentCategoryId)?.subcategories || [];
+}
 
 function createRow() {
   return {
@@ -52,7 +129,7 @@ function createRow() {
       method: '',
       description: '',
       plan: '1_month',
-      planLabel: '1 Month - ₹1',
+      planLabel: '1 Month - ₹1999',
     },
   };
 }
@@ -120,8 +197,8 @@ function validateRow(row) {
   if (!row.user.password) errors['user.password'] = 'Password is required';
 
   if (!row.business.name.trim()) errors['business.name'] = 'Business name is required';
-  if (!row.business.category_id.trim()) errors['business.category_id'] = 'Category UUID is required';
-  else if (!REQUIRED_UUID_PATTERN.test(row.business.category_id.trim())) errors['business.category_id'] = 'Category ID must be a UUID';
+  if (!row.business.category_id.trim()) errors['business.category_id'] = 'Subcategory UUID is required';
+  else if (!REQUIRED_UUID_PATTERN.test(row.business.category_id.trim())) errors['business.category_id'] = 'Subcategory ID must be a UUID';
   if (!row.business.city_id.trim()) errors['business.city_id'] = 'City UUID is required';
   else if (!REQUIRED_UUID_PATTERN.test(row.business.city_id.trim())) errors['business.city_id'] = 'City ID must be a UUID';
 
@@ -208,6 +285,7 @@ export default function BulkCreatePage() {
   const { toast } = useToast();
   const [rows, setRows] = useState([createRow()]);
   const [categories, setCategories] = useState([]);
+  const [selectedCategoryByRow, setSelectedCategoryByRow] = useState({});
   const [cities, setCities] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [rowErrors, setRowErrors] = useState({});
@@ -221,11 +299,7 @@ export default function BulkCreatePage() {
           getAllCities().catch(() => []),
         ]);
 
-        const normalizedCategories = Array.isArray(catResponse)
-          ? catResponse
-          : Array.isArray(catResponse?.categories)
-            ? catResponse.categories
-            : [];
+        const normalizedCategories = normalizeCategoriesResponse(catResponse);
 
         const normalizedCities = Array.isArray(cityResponse)
           ? cityResponse
@@ -246,9 +320,29 @@ export default function BulkCreatePage() {
 
   const addRow = () => setRows((prev) => [...prev, createRow()]);
 
+  useEffect(() => {
+    if (categories.length === 0) return;
+
+    setSelectedCategoryByRow((prev) => {
+      const next = { ...prev };
+      rows.forEach((row) => {
+        const resolvedParent = findParentCategoryId(categories, row.business.category_id);
+        if (!next[row.id] && resolvedParent) {
+          next[row.id] = resolvedParent;
+        }
+      });
+      return next;
+    });
+  }, [categories, rows]);
+
   const removeRow = (rowId) => {
     setRows((prev) => (prev.length === 1 ? prev : prev.filter((row) => row.id !== rowId)));
     setRowErrors((prev) => {
+      const next = { ...prev };
+      delete next[rowId];
+      return next;
+    });
+    setSelectedCategoryByRow((prev) => {
       const next = { ...prev };
       delete next[rowId];
       return next;
@@ -322,12 +416,14 @@ export default function BulkCreatePage() {
           <Card>
             <CardHeader
               title="Request Builder"
-              subtitle="Required fields are user.name, user.email, user.phone, user.password, business.name, business.category_id and business.city_id."
+              subtitle="Required fields are user.name, user.email, user.phone, user.password, business.name, business.category_id (selected subcategory id) and business.city_id."
               action={<span className="text-xs text-dark-500">Rows: {rows.length}</span>}
             />
             <CardBody className="space-y-4">
               {rows.map((row, index) => {
                 const errors = rowErrors[row.id] || {};
+                const selectedParentCategoryId = selectedCategoryByRow[row.id] || '';
+                const subcategories = getSubcategoriesByParent(categories, selectedParentCategoryId);
 
                 return (
                   <div key={row.id} className="rounded border border-dark-800 bg-dark-900/60 p-4">
@@ -398,13 +494,31 @@ export default function BulkCreatePage() {
                           <div className="flex flex-col gap-1.5">
                             <label className="text-xs font-medium text-dark-400">Category</label>
                             <select
-                              value={row.business.category_id}
-                              onChange={(e) => setRows((prev) => updateRow(prev, row.id, 'business', 'category_id', e.target.value))}
+                              value={selectedParentCategoryId}
+                              onChange={(e) => {
+                                const parentCategoryId = e.target.value;
+                                setSelectedCategoryByRow((prev) => ({ ...prev, [row.id]: parentCategoryId }));
+                                setRows((prev) => updateRow(prev, row.id, 'business', 'category_id', ''));
+                              }}
                               className="w-full bg-surface-2 border border-dark-700 rounded text-white text-sm px-3 py-2 outline-none focus:border-accent"
                             >
                               <option value="">Select category</option>
                               {categories.map((category) => (
                                 <option key={category.id} value={category.id}>{category.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-xs font-medium text-dark-400">Subcategory</label>
+                            <select
+                              value={row.business.category_id}
+                              onChange={(e) => setRows((prev) => updateRow(prev, row.id, 'business', 'category_id', e.target.value))}
+                              disabled={!selectedParentCategoryId}
+                              className="w-full bg-surface-2 border border-dark-700 rounded text-white text-sm px-3 py-2 outline-none focus:border-accent disabled:opacity-60"
+                            >
+                              <option value="">{selectedParentCategoryId ? 'Select subcategory' : 'Select category first'}</option>
+                              {subcategories.map((subcategory) => (
+                                <option key={subcategory.id} value={subcategory.id}>{subcategory.name}</option>
                               ))}
                             </select>
                             {getFieldError(errors, 'business.category_id') && (
@@ -548,8 +662,8 @@ export default function BulkCreatePage() {
             <Card>
               <CardHeader title="API Notes" subtitle="Use this when admin or superadmin needs to import multiple businesses at once." />
               <CardBody className="space-y-3 text-sm text-dark-300">
-                <p>Required per item: user.name, user.email, user.phone, user.password, business.name, business.category_id and business.city_id.</p>
-                <p>Payment is optional. Default plan is 1 month (₹1). If omitted, backend can auto-generate safe payment data.</p>
+                <p>Required per item: user.name, user.email, user.phone, user.password, business.name, business.category_id (selected subcategory id) and business.city_id.</p>
+                <p>Payment is optional. Default plan is 1 month (₹1999). If omitted, backend can auto-generate safe payment data.</p>
                 <p>Use UUIDs for category and city IDs. Phone must contain 10-15 digits.</p>
                 <div className="rounded border border-dark-800 bg-dark-900 p-3 text-xs text-dark-400">
                   The backend returns a per-item results array, so you should review created and failed rows independently.

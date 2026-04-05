@@ -109,6 +109,9 @@ export default function RootPage() {
           <Link href="/signup" className="rounded bg-accent px-5 py-2.5 text-sm font-semibold text-black hover:bg-accent-dark transition-colors">
             Get Started
           </Link>
+           <Link href="/login" className="rounded bg-accent px-5 py-2.5 text-sm font-semibold text-black hover:bg-accent-dark transition-colors">
+            Login
+          </Link>
           {/* <Link href="/signup" className="rounded border border-dark-600 bg-surface px-5 py-2.5 text-sm font-medium hover:bg-surface-2 transition-colors">
             List Your Business
           </Link>
