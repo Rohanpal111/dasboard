@@ -181,7 +181,7 @@ export default function RootPage() {
             </div> */}
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          {/* <div className="grid gap-4 sm:grid-cols-2">
             {[
               {
                 title: 'Get direct WhatsApp enquiries',
@@ -205,7 +205,7 @@ export default function RootPage() {
                 <p className="mt-2 text-sm leading-6 text-dark-300">{item.desc}</p>
               </div>
             ))}
-          </div>
+          </div> */}
         </div>
       </section>
 
