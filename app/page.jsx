@@ -28,10 +28,27 @@ const FEATURES = [
 ];
 
 const BILLING_OPTIONS = [
-  { duration: '1 Month', price: '₹1999' },
-  { duration: '3 Months', price: '₹2999', popular: true },
-  { duration: '6 Months', price: '₹4999' },
-  { duration: '12 Months', price: '₹7999' },
+  {
+    duration: '1 Month',
+    price: '₹1999',
+    description: 'Perfect to start quickly and test lead flow in your local area.',
+  },
+  {
+    duration: '3 Months',
+    price: '₹2999',
+    popular: true,
+    description: 'Most chosen plan for steady visibility and consistent enquiry growth.',
+  },
+  {
+    duration: '6 Months',
+    price: '₹4999',
+    description: 'Better long-term value for businesses running offers throughout the season.',
+  },
+  {
+    duration: '12 Months',
+    price: '₹7999',
+    description: 'Best yearly commitment for uninterrupted promotion and brand trust.',
+  },
 ];
 
 const PLAN_INCLUDES = [
@@ -45,19 +62,46 @@ const PLAN_INCLUDES = [
   'Combo deal support',
 ];
 
-const CATEGORIES = [
-  'Salon',
-  'Spa',
-  'Gym',
-  'Boutique',
-  'Makeup artist',
-  'Banquet hall',
-  'Photographer',
-  'Coaching institute',
-  'Clinic',
-  'Home services',
-  'Freelancers',
+const CATEGORY_NAMES = [
+  'Salons',
+  'Spas',
+  'Nail Studios',
+  'Makeup Artists',
+  'Boutiques Cafe (Dine-In Only)',
+  'Restaurant (Dine-In Only)',
+  'Gyms',
+  'Yoga Studios',
+  'Zumba Classes name',
+  'Dieticians',
+  'Banquet Halls',
+  'Decorators',
+  'Caterers',
+  'Tuition Centres Dance Classes',
+  'Music Classes',
+  'Coding Schools',
+  'Photographers',
+  'Videographers Studio Rentals',
+  'Pet Shops',
+  'Gift Stores',
+  'Bookstores',
+  'Property Dealers Rental Listings',
+  'Interior Designers',
+  'Tattoo Studios',
+  'Car Wash',
+  'Astrology Tailors',
+  'DJs',
+  'Mehendi Artists',
+  'Party Lawns',
+  'Stationery',
 ];
+
+const CATEGORIES = CATEGORY_NAMES.map((name) => ({
+  id: name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+  name,
+  slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+  isActive: true,
+  imageUrl: '',
+}));
 
 const STEPS = [
   'Create your business profile',
@@ -245,10 +289,13 @@ export default function RootPage() {
       <section className="border-y border-dark-800 bg-surface/60">
         <div className="mx-auto max-w-7xl px-4 py-12 md:px-6">
           <h2 className="mt-2 text-3xl font-bold">Businesses that can grow with Sunday Hundred</h2>
-          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {CATEGORIES.map((category) => (
-              <div key={category} className="rounded-2xl border border-dark-700 bg-dark-900 px-4 py-3 text-sm text-dark-200">
-                {category}
+          <div className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+            {CATEGORIES.filter((category) => category.isActive).map((category) => (
+              <div
+                key={category.id}
+                className="flex h-16 items-center justify-center rounded-xl border border-dark-700 bg-dark-900 px-3 text-center transition-colors hover:border-dark-500 hover:bg-dark-800"
+              >
+                <p className="text-xs font-medium leading-4 text-dark-100 sm:text-sm">{category.name}</p>
               </div>
             ))}
           </div>
@@ -277,7 +324,7 @@ export default function RootPage() {
                   ) : null}
                 </div>
                 <p className="mt-3 text-sm leading-5 text-dark-300">
-                  Best for businesses that want more visibility and direct leads.
+                  {option.description}
                 </p>
               </div>
             ))}
