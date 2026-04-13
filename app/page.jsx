@@ -67,7 +67,7 @@ const CATEGORY_NAMES = [
   'Spas',
   'Nail Studios',
   'Makeup Artists',
-  'Boutiques Cafe (Dine-In Only)',
+  'Cafe (Dine-In Only)',
   'Restaurant (Dine-In Only)',
   'Gyms',
   'Yoga Studios',
