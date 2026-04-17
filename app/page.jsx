@@ -93,6 +93,7 @@ const CATEGORY_NAMES = [
   'Mehendi Artists',
   'Party Lawns',
   'Stationery',
+  "Boutique and etc."
 ];
 
 const CATEGORIES = CATEGORY_NAMES.map((name) => ({
